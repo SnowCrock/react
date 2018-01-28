@@ -229,6 +229,7 @@ module.exports = function<T, P, I, TI, PI, C, CX, PL>(
       element.type != null &&
       element.type.prototype != null &&
       (element.type.prototype: any).unstable_isAsyncReactComponent === true;
+    // 获取更新优先级
     const priorityLevel = getPriorityContext(current, forceAsync);
     const nextState = {element};
     callback = callback === undefined ? null : callback;
@@ -250,13 +251,27 @@ module.exports = function<T, P, I, TI, PI, C, CX, PL>(
     },
 
     updateContainer(
-      element: ReactNodeList,
-      container: OpaqueRoot,
-      parentComponent: ?React$Component<any, any>,
+      element: ReactNodeList, // 渲染的react组件
+      container: OpaqueRoot,  // 渲染的Fiber容器
+      parentComponent: ?React$Component<any, any>, // 父组件
       callback: ?Function,
     ): void {
       // TODO: If this is a nested container, this won't be the root.
       const current = container.current;
+      /**
+       * container的属性， current 指向未初始化的fiber， stateNode又指回root
+       * const uninitializedFiber = createHostRootFiber();
+       * const root = {
+       *   current: uninitializedFiber,
+       *   containerInfo: containerInfo,
+       *   isScheduled: false,
+       *   nextScheduledRoot: null,
+       *   context: null,
+       *   pendingContext: null,
+       * };
+       * uninitializedFiber.stateNode = root;
+       * return root;
+       */
 
       if (__DEV__) {
         if (ReactFiberInstrumentation.debugTool) {
@@ -269,7 +284,7 @@ module.exports = function<T, P, I, TI, PI, C, CX, PL>(
           }
         }
       }
-
+      // 从父组件中获取context， 没有则返回新对象 {}
       const context = getContextForSubtree(parentComponent);
       if (container.context === null) {
         container.context = context;

@@ -647,6 +647,7 @@ function renderSubtreeIntoContainer(
         );
       }
     }
+    // 新建fiber容器
     const newRoot = DOMRenderer.createContainer(container);
     root = container._reactRootContainer = newRoot;
     // Initial mount should not be batched.

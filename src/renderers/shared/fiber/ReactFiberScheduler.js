@@ -271,11 +271,13 @@ module.exports = function<T, P, I, TI, PI, C, CX, PL>(
       // If there's no work on it, it will get unscheduled too.
       nextScheduledRoot = next;
     }
-
+    // 安排中的root节点
     let root = nextScheduledRoot;
     let highestPriorityRoot = null;
     let highestPriorityLevel = NoWork;
     while (root !== null) {
+      // 如果pendingwork 不处于nowork状态，且优先级高于当前最高优先级，把当前优先级设为最高优先级，节点设为最高节点
+      // 寻找最小节点
       if (
         root.current.pendingWorkPriority !== NoWork &&
         (highestPriorityLevel === NoWork ||
@@ -288,12 +290,14 @@ module.exports = function<T, P, I, TI, PI, C, CX, PL>(
       root = root.nextScheduledRoot;
     }
     if (highestPriorityRoot !== null) {
+      // 下一步优先级设为最高优先级
       nextPriorityLevel = highestPriorityLevel;
       // Before we start any new work, let's make sure that we have a fresh
       // stack to work from.
       // TODO: This call is buried a bit too deep. It would be nice to have
       // a single point which happens right before any new work and
       // unfortunately this is it.
+      // 重置调用栈
       resetContextStack();
 
       nextUnitOfWork = createWorkInProgress(
@@ -811,10 +815,12 @@ module.exports = function<T, P, I, TI, PI, C, CX, PL>(
     minPriorityLevel: PriorityLevel,
     deadline: Deadline | null,
   ) {
+    // 如果有即将呈现的效果， 设为在tick内完成的优先级 ，提交所有的效果
     if (pendingCommit !== null) {
-      priorityContext = TaskPriority;
+      priorityContext = TaskPriority; // Completes at the end of the current tick.
       commitAllWork(pendingCommit);
       handleCommitPhaseErrors();
+      // 如果下一次工作单元为空的话，重置工作单元
     } else if (nextUnitOfWork === null) {
       resetNextUnitOfWork();
     }
@@ -828,6 +834,7 @@ module.exports = function<T, P, I, TI, PI, C, CX, PL>(
     priorityContext = nextPriorityLevel;
 
     loop: do {
+      // 如果下一次优先级高于TaskPriority
       if (nextPriorityLevel <= TaskPriority) {
         // Flush all synchronous and task work.
         while (nextUnitOfWork !== null) {
@@ -961,7 +968,7 @@ module.exports = function<T, P, I, TI, PI, C, CX, PL>(
 
   function performWork(
     minPriorityLevel: PriorityLevel,
-    deadline: Deadline | null,
+    deadline: Deadline | null, // 剩余更新时间
   ) {
     if (__DEV__) {
       startWorkLoopTimer();
@@ -1364,13 +1371,13 @@ module.exports = function<T, P, I, TI, PI, C, CX, PL>(
 
   function scheduleUpdateImpl(
     fiber: Fiber,
-    priorityLevel: PriorityLevel,
+    priorityLevel: PriorityLevel, // 更新优先级
     isErrorRecovery: boolean,
   ) {
     if (__DEV__) {
       recordScheduleUpdate();
     }
-
+    // 如果更新数量超过上限
     if (nestedUpdateCount > NESTED_UPDATE_LIMIT) {
       didFatal = true;
       invariant(
@@ -1381,7 +1388,7 @@ module.exports = function<T, P, I, TI, PI, C, CX, PL>(
           'prevent infinite loops.',
       );
     }
-
+    // （数字越小优先级越高） 如果当前没有任务 且有高优先级，将之后的工作任务置空
     if (!isPerformingWork && priorityLevel <= nextPriorityLevel) {
       // We must reset the current unit of work pointer so that we restart the
       // search from the root during the next tick, in case there is now higher
@@ -1403,6 +1410,7 @@ module.exports = function<T, P, I, TI, PI, C, CX, PL>(
       // we reach a node whose priority matches (and whose alternate's priority
       // matches) we can exit safely knowing that the rest of the path is correct.
       shouldContinue = false;
+      // 如果当前没有即将处理的任务， 或者要处理的任务优先级低于当前，将当前任务置为即将处理的任务，并寻找更高优先级任务
       if (
         node.pendingWorkPriority === NoWork ||
         node.pendingWorkPriority > priorityLevel
@@ -1422,17 +1430,21 @@ module.exports = function<T, P, I, TI, PI, C, CX, PL>(
         }
       }
       if (node.return === null) {
+        // 如果是hostroot标志
         if (node.tag === HostRoot) {
           const root: FiberRoot = (node.stateNode: any);
+          // 如果优先级不处于无工作状态，且还未被安排，安排根节点
           scheduleRoot(root, priorityLevel);
           if (!isPerformingWork) {
             switch (priorityLevel) {
+              // 同步任务
               case SynchronousPriority:
                 // Perform this update now.
                 if (isUnbatchingUpdates) {
                   // We're inside unbatchedUpdates, which is inside either
                   // batchedUpdates or a lifecycle. We should only flush
                   // synchronous work, not task work.
+                  // 只更新同步工作
                   performWork(SynchronousPriority, null);
                 } else {
                   // Flush both synchronous and task work.
